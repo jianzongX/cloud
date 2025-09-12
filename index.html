@@ -29,25 +29,26 @@
                 content-visibility: auto;
             }
             .file-hover {
-                @apply transition-all duration-200 hover:bg-primary/5 hover:translate-x-1;
+                @apply transition-all duration-200 hover:bg-primary/10 hover:translate-x-1;
             }
         }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <header class="bg-white border-b border-gray-200">
-        <div class="container mx-auto px-4 py-4">
-            <h1 class="text-xl font-bold text-dark flex items-center">
-                <i class="fa fa-github mr-2 text-primary"></i>
+    <header class="bg-white shadow-md">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark flex items-center">
+                <i class="fa fa-github text-3xl mr-3 text-primary"></i>
                 GitHub 文件浏览器
             </h1>
+            <p class="text-secondary mt-1">浏览和下载 "file" 文件夹中的文件</p>
         </div>
     </header>
 
-    <main class="container mx-auto px-4 py-6">
-        <div class="max-w-4xl mx-auto bg-white rounded-lg overflow-hidden">
-            <div class="p-4 border-b border-gray-100 bg-gray-50">
-                <h2 class="text-lg font-medium text-dark flex items-center">
+    <main class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="p-6 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-xl font-semibold text-dark flex items-center">
                     <i class="fa fa-folder-open text-primary mr-2"></i>
                     file 文件夹内容
                 </h2>
@@ -62,21 +63,22 @@
                 </div>
             </div>
             
-            <div id="error-message" class="p-4 hidden">
-                <div class="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start">
-                    <i class="fa fa-exclamation-circle text-red-500 mr-2 mt-0.5"></i>
+            <div id="error-message" class="p-6 hidden">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
+                    <i class="fa fa-exclamation-circle text-red-500 text-xl mt-0.5 mr-3"></i>
                     <div>
-                        <h3 class="font-medium text-red-800 text-sm">加载失败</h3>
-                        <p class="text-red-700 text-xs mt-1" id="error-details">无法加载文件列表，请检查文件路径是否正确。</p>
+                        <h3 class="font-medium text-red-800">加载失败</h3>
+                        <p class="text-red-700 text-sm mt-1" id="error-details">无法加载文件列表，请检查文件路径是否正确。</p>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer class="bg-white border-t border-gray-200 mt-8 py-4">
-        <div class="container mx-auto px-4 text-center text-sm text-gray-500">
-            <p>点击文件名即可下载对应文件</p>
+    <footer class="bg-dark text-white mt-12 py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p>使用 GitHub 作为文件存储服务</p>
+            <p class="text-gray-400 text-sm mt-2">点击文件名即可下载对应文件</p>
         </div>
     </footer>
 
@@ -157,7 +159,7 @@
                 
                 // 创建列表项
                 const li = document.createElement('li');
-                li.className = 'py-2 px-1 file-hover rounded';
+                li.className = 'py-3 px-2 file-hover rounded';
                 
                 // 确定文件图标
                 const fileExtension = getFileExtension(file.name);
@@ -166,11 +168,11 @@
                 li.innerHTML = `
                     <a href="${fileUrl}" download="${file.name}" class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <i class="fa ${fileIcon} text-primary mr-2"></i>
+                            <i class="fa ${fileIcon} text-primary mr-3 text-xl"></i>
                             <div>
-                                <div class="text-gray-800">${file.name}</div>
+                                <div class="font-medium text-gray-900">${file.name}</div>
                                 <div class="text-xs text-gray-500 mt-0.5">
-                                    ${formatFileSize(file.size)} · ${formatDate(file.updated_at)}
+                                    ${formatFileSize(file.size)} · 最后更新: ${formatDate(file.updated_at)}
                                 </div>
                             </div>
                         </div>
@@ -220,19 +222,19 @@
                 'xlsx': 'fa-file-excel-o',
                 'ppt': 'fa-file-powerpoint-o',
                 'pptx': 'fa-file-powerpoint-o',
-                'txt': 'fa-file-text-o',
+                'txt': 'fa-file-text-o'，
                 'md': 'fa-file-text-o',
                 
                 // 图像
-                'jpg': 'fa-file-image-o'，
-                'jpeg': 'fa-file-image-o',
+                'jpg': 'fa-file-image-o',
+                'jpeg': 'fa-file-image-o'，
                 'png': 'fa-file-image-o'，
-                'gif': 'fa-file-image-o'，
-                'svg': 'fa-file-image-o',
+                'gif': 'fa-file-image-o',
+                'svg': 'fa-file-image-o'，
                 
                 // 压缩文件
                 'zip': 'fa-file-zip-o',
-                'rar': 'fa-file-zip-o'，
+                'rar': 'fa-file-zip-o',
                 'tar': 'fa-file-zip-o',
                 'gz': 'fa-file-zip-o',
                 
