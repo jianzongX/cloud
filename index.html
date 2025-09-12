@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub 文件浏览器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#64748b',
+                        dark: '#1e293b',
+                        light: '#f8fafc'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .file-hover {
+                @apply transition-all duration-200 hover:bg-primary/10 hover:translate-x-1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white shadow-md">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark flex items-center">
+                <i class="fa fa-github text-3xl mr-3 text-primary"></i>
+                GitHub 文件浏览器
+            </h1>
+            <p class="text-secondary mt-1">浏览和下载 "file" 文件夹中的文件</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="p-6 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-xl font-semibold text-dark flex items-center">
+                    <i class="fa fa-folder-open text-primary mr-2"></i>
+                    file 文件夹内容
+                </h2>
+                <p class="text-secondary text-sm mt-1" id="file-count">加载文件中...</p>
+            </div>
+            
+            <div id="file-list" class="p-4">
+                <!-- 文件列表将通过JavaScript动态生成 -->
+                <div class="flex justify-center items-center h-40 text-gray-400">
+                    <i class="fa fa-circle-o-notch fa-spin text-3xl mr-2"></i>
+                    <span>正在加载文件列表...</span>
+                </div>
+            </div>
+            
+            <div id="error-message" class="p-6 hidden">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
+                    <i class="fa fa-exclamation-circle text-red-500 text-xl mt-0.5 mr-3"></i>
+                    <div>
+                        <h3 class="font-medium text-red-800">加载失败</h3>
+                        <p class="text-red-700 text-sm mt-1" id="error-details">无法加载文件列表，请检查文件路径是否正确。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-white mt-12 py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p>使用 GitHub 作为文件存储服务</p>
+            <p class="text-gray-400 text-sm mt-2">点击文件名即可下载对应文件</p>
+        </div>
+    </footer>
+
+    <script>
+        // 获取GitHub仓库信息（需要根据实际情况修改）
+        // 这些信息将用于构建文件的原始URL
+        const GITHUB_USER = 'your-username'; // 替换为你的GitHub用户名
+        const GITHUB_REPO = 'your-repo';     // 替换为你的仓库名
+        const BRANCH = 'main';               // 替换为你的分支名（通常是main或master）
+        
+        // 文件存储的文件夹路径
+        const FILE_FOLDER = 'file';
+        
+        // DOM元素
+        const fileListElement = document.getElementById('file-list');
+        const fileCountElement = document.getElementById('file-count');
+        const errorMessageElement = document.getElementById('error-message');
+        const errorDetailsElement = document.getElementById('error-details');
+        
+        // 页面加载时获取文件列表
+        document.addEventListener('DOMContentLoaded', fetchFileList);
+        
+        /**
+         * 从GitHub API获取文件列表
+         */
+        async function fetchFileList() {
+            try {
+                // 使用GitHub API获取file文件夹中的内容
+                const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_FOLDER}?ref=${BRANCH}`;
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status} - ${response.statusText}`);
+                }
+                
+                const files = await response.json();
+                
+                // 过滤出文件（排除子文件夹）
+                const fileItems = files.filter(item => item.type === 'file');
+                
+                // 显示文件列表
+                displayFileList(fileItems);
+                
+            } catch (error) {
+                console.error('获取文件列表失败:', error);
+                showError(`无法加载文件列表: ${error.message}`);
+            }
+        }
+        
+        /**
+         * 显示文件列表
+         * @param {Array} files - 文件数组
+         */
+        function displayFileList(files) {
+            // 清空加载状态
+            fileListElement.innerHTML = '';
+            
+            // 更新文件计数
+            fileCountElement.textContent = `共 ${files.length} 个文件`;
+            
+            if (files.length === 0) {
+                fileListElement.innerHTML = `
+                    <div class="text-center py-10 text-gray-500">
+                        <i class="fa fa-folder-open-o text-4xl mb-3"></i>
+                        <p>文件夹为空</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 创建文件列表
+            const ul = document.createElement('ul');
+            ul.className = 'divide-y divide-gray-100';
+            
+            files.forEach(file => {
+                // 构建文件下载URL
+                const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}/${file.path}`;
+                
+                // 创建列表项
+                const li = document.createElement('li');
+                li.className = 'py-3 px-2 file-hover rounded';
+                
+                // 确定文件图标
+                const fileExtension = getFileExtension(file.name);
+                const fileIcon = getFileIcon(fileExtension);
+                
+                li.innerHTML = `
+                    <a href="${fileUrl}" download="${file.name}" class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <i class="fa ${fileIcon} text-primary mr-3 text-xl"></i>
+                            <div>
+                                <div class="font-medium text-gray-900">${file.name}</div>
+                                <div class="text-xs text-gray-500 mt-0.5">
+                                    ${formatFileSize(file.size)} · 最后更新: ${formatDate(file.updated_at)}
+                                </div>
+                            </div>
+                        </div>
+                        <i class="fa fa-download text-gray-400 hover:text-primary transition-colors"></i>
+                    </a>
+                `;
+                
+                ul.appendChild(li);
+            });
+            
+            fileListElement.appendChild(ul);
+        }
+        
+        /**
+         * 显示错误信息
+         * @param {string} message - 错误信息
+         */
+        function showError(message) {
+            fileListElement.innerHTML = '';
+            errorDetailsElement.textContent = message;
+            errorMessageElement.classList.remove('hidden');
+            fileCountElement.textContent = '加载失败';
+        }
+        
+        /**
+         * 获取文件扩展名
+         * @param {string} fileName - 文件名
+         * @returns {string} 文件扩展名
+         */
+        function getFileExtension(fileName) {
+            const parts = fileName.split('.');
+            return parts.length > 1 ? parts.pop().toLowerCase() : '';
+        }
+        
+        /**
+         * 根据文件扩展名获取对应的FontAwesome图标
+         * @param {string} extension - 文件扩展名
+         * @returns {string} 图标类名
+         */
+        function getFileIcon(extension) {
+            const iconMap = {
+                // 文档
+                'pdf': 'fa-file-pdf-o',
+                'doc': 'fa-file-word-o',
+                'docx': 'fa-file-word-o',
+                'xls': 'fa-file-excel-o',
+                'xlsx': 'fa-file-excel-o',
+                'ppt': 'fa-file-powerpoint-o',
+                'pptx': 'fa-file-powerpoint-o',
+                'txt': 'fa-file-text-o',
+                'md': 'fa-file-text-o',
+                
+                // 图像
+                'jpg': 'fa-file-image-o',
+                'jpeg': 'fa-file-image-o',
+                'png': 'fa-file-image-o',
+                'gif': 'fa-file-image-o',
+                'svg': 'fa-file-image-o',
+                
+                // 压缩文件
+                'zip': 'fa-file-zip-o',
+                'rar': 'fa-file-zip-o',
+                'tar': 'fa-file-zip-o',
+                'gz': 'fa-file-zip-o',
+                
+                // 代码
+                'html': 'fa-file-code-o',
+                'css': 'fa-file-code-o',
+                'js': 'fa-file-code-o',
+                'py': 'fa-file-code-o',
+                'java': 'fa-file-code-o',
+                'cpp': 'fa-file-code-o',
+                'c': 'fa-file-code-o',
+            };
+            
+            return iconMap[extension] || 'fa-file-o';
+        }
+        
+        /**
+         * 格式化文件大小（字节转换为KB/MB）
+         * @param {number} bytes - 文件大小（字节）
+         * @returns {string} 格式化后的大小字符串
+         */
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+        
+        /**
+         * 格式化日期
+         * @param {string} dateString - ISO日期字符串
+         * @returns {string} 格式化后的日期
+         */
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+    </script>
+</body>
+</html>
