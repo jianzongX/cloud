@@ -84,8 +84,9 @@
 
     <script>
         // 获取GitHub仓库信息（需要根据实际情况修改）
-        const GITHUB_USER = 'jianzongX'; // 替换为你的GitHub用户名
-        const GITHUB_REPO = 'cloud';     // 替换为你的仓库名
+        // 这些信息将用于构建文件的原始URL
+        const GITHUB_USER = 'your-username'; // 替换为你的GitHub用户名
+        const GITHUB_REPO = 'your-repo';     // 替换为你的仓库名
         const BRANCH = 'main';               // 替换为你的分支名（通常是main或master）
         
         // 文件存储的文件夹路径
@@ -164,10 +165,8 @@
                 const fileExtension = getFileExtension(file.name);
                 const fileIcon = getFileIcon(fileExtension);
                 
-                // 修改链接，使用JavaScript触发下载
                 li.innerHTML = `
-                    <div class="flex items-center justify-between cursor-pointer" 
-                         onclick="downloadFile('${fileUrl}', '${file.name}')">
+                    <a href="${fileUrl}" download="${file.name}" class="flex items-center justify-between">
                         <div class="flex items-center">
                             <i class="fa ${fileIcon} text-primary mr-3 text-xl"></i>
                             <div>
@@ -178,68 +177,13 @@
                             </div>
                         </div>
                         <i class="fa fa-download text-gray-400 hover:text-primary transition-colors"></i>
-                    </div>
+                    </a>
                 `;
                 
                 ul.appendChild(li);
             });
             
             fileListElement.appendChild(ul);
-        }
-        
-        /**
-         * 使用JavaScript强制下载文件
-         * @param {string} url - 文件URL
-         * @param {string} filename - 文件名
-         */
-        function downloadFile(url, filename) {
-            // 创建一个隐藏的链接
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename; // 强制浏览器下载而非打开
-            
-            // 创建一个点击事件并触发
-            const event = new MouseEvent('click', {
-                view: window,
-                bubbles: true,
-                cancelable: true
-            });
-            
-            // 对于某些浏览器，可能需要添加到DOM中才能触发
-            document.body.appendChild(link);
-            link.dispatchEvent(event);
-            document.body.removeChild(link);
-            
-            // 如果仍然无法下载，尝试使用fetch方法
-            setTimeout(() => {
-                forceDownloadWithFetch(url, filename);
-            }, 500);
-        }
-        
-        /**
-         * 使用Fetch API强制下载文件（备用方法）
-         * @param {string} url - 文件URL
-         * @param {string} filename - 文件名
-         */
-        async function forceDownloadWithFetch(url, filename) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('文件获取失败');
-                
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
-                
-                const link = document.createElement('a');
-                link.href = objectUrl;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(objectUrl);
-            } catch (error) {
-                console.error('强制下载失败:', error);
-                alert('下载失败，请尝试右键链接选择"另存为"');
-            }
         }
         
         /**
