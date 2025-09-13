@@ -49,7 +49,7 @@
 </head>
 <body class="bg-gray-50 min-h-screen">
     <main class="container mx-auto px-4 py-8">
-        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="max-w-full mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
             <!-- 面包屑导航和返回按钮合并在一行 -->
             <div id="breadcrumb" class="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                 <div class="flex items-center gap-2">
@@ -206,7 +206,7 @@
         }
         
         /**
-         * 显示文件和文件夹
+         * 显示文件和文件夹（核心修改：网格布局改为最大5列）
          */
         function displayItems(folders, files) {
             fileListElement.innerHTML = '';
@@ -223,8 +223,9 @@
                 return;
             }
             
+            // 关键修改：grid-cols配置改为 "2列→3列→4列→5列"，适配不同屏幕宽度
             const gridContainer = document.createElement('div');
-            gridContainer.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4';
+            gridContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4';
             
             // 添加文件夹
             folders.forEach(folder => {
