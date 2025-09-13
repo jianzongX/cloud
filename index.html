@@ -29,26 +29,40 @@
                 content-visibility: auto;
             }
             .file-hover {
-                @apply transition-all duration-200 hover:bg-primary/10 hover:translate-x-1;
+                @apply transition-all duration-200 hover:bg-primary/10 hover:-translate-y-1;
+            }
+            .file-card {
+                @apply flex flex-col items-center justify-center p-4 rounded-lg border border-gray-100 w-full h-full;
+            }
+            .icon-large {
+                font-size: 60px !important;
+            }
+            .folder-icon {
+                font-size: 60px !important;
+                color: #f59e0b !important;
+            }
+            .back-btn-hover {
+                @apply transition-colors duration-200 hover:text-primary hover:bg-primary/5;
             }
         }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <!-- 已删除顶部标题横幅 -->
-
     <main class="container mx-auto px-4 py-8">
         <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-            <div class="p-6 border-b border-gray-200 bg-gray-50">
-                <h2 class="text-xl font-semibold text-dark flex items-center">
-                    <i class="fa fa-folder-open text-primary mr-2"></i>
-                    file 文件夹内容
-                </h2>
-                <p class="text-secondary text-sm mt-1" id="file-count">加载文件中...</p>
+            <!-- 面包屑导航和返回按钮合并在一行 -->
+            <div id="breadcrumb" class="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-500">当前路径:</span>
+                    <span id="current-path" class="font-medium">根目录</span>
+                </div>
+                <!-- 返回上级按钮 -->
+                <button id="back-btn" class="text-sm text-gray-600 back-btn-hover px-3 py-1 rounded border border-gray-200 opacity-50 cursor-not-allowed">
+                    <i class="fa fa-arrow-left mr-1"></i>返回上级目录
+                </button>
             </div>
             
-            <div id="file-list" class="p-4">
-                <!-- 文件列表将通过JavaScript动态生成 -->
+            <div id="file-list" class="p-6">
                 <div class="flex justify-center items-center h-40 text-gray-400">
                     <i class="fa fa-circle-o-notch fa-spin text-3xl mr-2"></i>
                     <span>正在加载文件列表...</span>
@@ -68,63 +82,138 @@
     </main>
 
     <script>
-        // 获取GitHub仓库信息（需要根据实际情况修改）
-        // 这些信息将用于构建文件的原始URL
-        const GITHUB_USER = 'jianzongX'; // 替换为你的GitHub用户名
-        const GITHUB_REPO = 'cloud';     // 替换为你的仓库名
-        const BRANCH = 'main';               // 替换为你的分支名（通常是main或master）
+        // GitHub仓库配置
+        const GITHUB_USER = 'jianzongX';
+        const GITHUB_REPO = 'cloud';
+        const BRANCH = 'main';
+        const ROOT_PATH = 'file'; // 实际根目录路径
+        const ROOT_DISPLAY_NAME = '根目录'; // 根目录显示名称
         
-        // 文件存储的文件夹路径
-        const FILE_FOLDER = 'file';
+        // 路径管理
+        let currentPath = ROOT_PATH;  // 当前路径
+        let pathSegments = [ROOT_PATH];  // 路径分段数组
         
         // DOM元素
         const fileListElement = document.getElementById('file-list');
-        const fileCountElement = document.getElementById('file-count');
         const errorMessageElement = document.getElementById('error-message');
         const errorDetailsElement = document.getElementById('error-details');
+        const backBtn = document.getElementById('back-btn');
+        const currentPathText = document.getElementById('current-path');
         
-        // 页面加载时获取文件列表
-        document.addEventListener('DOMContentLoaded', fetchFileList);
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchFileList(currentPath);
+            backBtn.addEventListener('click', goBack);
+        });
         
         /**
-         * 从GitHub API获取文件列表
+         * 获取文件列表
          */
-        async function fetchFileList() {
+        async function fetchFileList(targetPath) {
+            showLoadingState();
+            
             try {
-                // 使用GitHub API获取file文件夹中的内容
-                const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_FOLDER}?ref=${BRANCH}`;
-                const response = await fetch(apiUrl);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP错误: ${response.status} - ${response.statusText}`);
+                if (!isValidPath(targetPath)) {
+                    throw new Error("路径包含非法字符");
                 }
                 
-                const files = await response.json();
+                const encodedPath = encodeURIComponent(targetPath).replace(/%2F/g, '/');
+                const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${encodedPath}?ref=${BRANCH}`;
                 
-                // 过滤出文件（排除子文件夹）
-                const fileItems = files.filter(item => item.type === 'file');
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    }
+                });
                 
-                // 显示文件列表
-                displayFileList(fileItems);
+                if (response.status === 404) {
+                    throw new Error(`路径不存在: /${targetPath}`);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`请求失败: ${response.status} ${response.statusText}`);
+                }
+                
+                const items = await response.json();
+                
+                if (items.message) {
+                    throw new Error(`API错误: ${items.message}`);
+                }
+                
+                const folders = items.filter(item => item.type === 'dir');
+                const files = items.filter(item => item.type === 'file');
+                
+                currentPath = targetPath;
+                pathSegments = targetPath.split('/').filter(segment => segment);
+                
+                updatePathUI();
+                displayItems(folders, files);
                 
             } catch (error) {
-                console.error('获取文件列表失败:', error);
-                showError(`无法加载文件列表: ${error.message}`);
+                console.error('加载失败:', error);
+                showError(`无法加载内容: ${error.message}`);
             }
         }
         
         /**
-         * 显示文件列表
-         * @param {Array} files - 文件数组
+         * 返回上级目录
          */
-        function displayFileList(files) {
-            // 清空加载状态
+        function goBack() {
+            if (pathSegments.length <= 1) {
+                console.log('已在根目录，无法返回');
+                return;
+            }
+            
+            try {
+                pathSegments.pop();
+                const parentPath = pathSegments.join('/');
+                console.log('返回上级路径:', parentPath);
+                fetchFileList(parentPath);
+            } catch (error) {
+                console.error('返回失败:', error);
+                showError('返回上级目录时发生错误');
+            }
+        }
+        
+        /**
+         * 更新路径UI显示 - 所有目录根目录左边都不加斜杠
+         */
+        function updatePathUI() {
+            // 根目录直接显示"根目录"
+            if (currentPath === ROOT_PATH && pathSegments.length === 1) {
+                currentPathText.textContent = ROOT_DISPLAY_NAME;
+            } else {
+                // 子目录显示为"根目录/子目录1/子目录2"格式，根目录左侧无斜杠
+                const displaySegments = pathSegments.map((segment, index) => {
+                    return index === 0 ? ROOT_DISPLAY_NAME : segment;
+                });
+                currentPathText.textContent = displaySegments.join('/');
+            }
+            
+            // 更新返回按钮状态
+            const hasParent = pathSegments.length > 1;
+            if (hasParent) {
+                backBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                backBtn.classList.add('back-btn-hover');
+                backBtn.disabled = false;
+            } else {
+                backBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                backBtn.classList.remove('back-btn-hover');
+                backBtn.disabled = true;
+            }
+        }
+        
+        /**
+         * 显示文件和文件夹
+         */
+        function displayItems(folders, files) {
             fileListElement.innerHTML = '';
             
-            // 更新文件计数
-            fileCountElement.textContent = `共 ${files.length} 个文件`;
+            const totalCount = folders.length + files.length;
             
-            if (files.length === 0) {
+            if (totalCount === 0) {
                 fileListElement.innerHTML = `
                     <div class="text-center py-10 text-gray-500">
                         <i class="fa fa-folder-open-o text-4xl mb-3"></i>
@@ -134,58 +223,93 @@
                 return;
             }
             
-            // 创建文件列表
-            const ul = document.createElement('ul');
-            ul.className = 'divide-y divide-gray-100';
+            const gridContainer = document.createElement('div');
+            gridContainer.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4';
             
+            // 添加文件夹
+            folders.forEach(folder => {
+                const folderCard = document.createElement('div');
+                folderCard.className = 'file-hover aspect-square cursor-pointer';
+                
+                folderCard.innerHTML = `
+                    <div class="file-card">
+                        <div class="flex items-center justify-center h-3/4">
+                            <i class="fa fa-folder folder-icon"></i>
+                        </div>
+                        <div class="h-1/4 flex items-center justify-center text-center px-2">
+                            <span class="font-medium text-gray-800 text-sm truncate">${folder.name}</span>
+                        </div>
+                    </div>
+                `;
+                
+                folderCard.addEventListener('click', () => {
+                    const newPath = currentPath ? `${currentPath}/${folder.name}` : folder.name;
+                    fetchFileList(newPath);
+                });
+                
+                gridContainer.appendChild(folderCard);
+            });
+            
+            // 添加文件
             files.forEach(file => {
-                // 构建文件下载URL
-                const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}/${file.path}`;
-                
-                // 创建列表项
-                const li = document.createElement('li');
-                li.className = 'py-3 px-2 file-hover rounded';
-                
-                // 确定文件图标
+                const fileUrl = `https://proxy.pipers.cn/https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}/${file.path}`;
                 const fileExtension = getFileExtension(file.name);
                 const fileIcon = getFileIcon(fileExtension);
                 
-                li.innerHTML = `
-                    <a href="${fileUrl}" download="${file.name}" class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <i class="fa ${fileIcon} text-primary mr-3 text-xl"></i>
-                            <div>
-                                <div class="font-medium text-gray-900">${file.name}</div>
-                                <div class="text-xs text-gray-500 mt-0.5">
-                                    ${formatFileSize(file.size)} · 最后更新: ${formatDate(file.updated_at)}
-                                </div>
-                            </div>
+                const fileCard = document.createElement('a');
+                fileCard.href = fileUrl;
+                fileCard.download = file.name;
+                fileCard.className = 'file-hover aspect-square';
+                
+                fileCard.innerHTML = `
+                    <div class="file-card">
+                        <div class="flex items-center justify-center h-3/4 text-primary">
+                            <i class="fa ${fileIcon} icon-large"></i>
                         </div>
-                        <i class="fa fa-download text-gray-400 hover:text-primary transition-colors"></i>
-                    </a>
+                        <div class="h-1/4 flex items-center justify-center text-center px-2">
+                            <span class="font-medium text-gray-800 text-sm truncate">${file.name}</span>
+                        </div>
+                    </div>
                 `;
                 
-                ul.appendChild(li);
+                gridContainer.appendChild(fileCard);
             });
             
-            fileListElement.appendChild(ul);
+            fileListElement.appendChild(gridContainer);
         }
         
         /**
-         * 显示错误信息
-         * @param {string} message - 错误信息
+         * 辅助函数：验证路径
+         */
+        function isValidPath(path) {
+            const invalidPatterns = /(\.\.\/|\.\/|~|\/\/)/;
+            return !invalidPatterns.test(path);
+        }
+        
+        /**
+         * 辅助函数：显示加载状态
+         */
+        function showLoadingState() {
+            errorMessageElement.classList.add('hidden');
+            fileListElement.innerHTML = `
+                <div class="flex justify-center items-center h-40 text-gray-400">
+                    <i class="fa fa-circle-o-notch fa-spin text-3xl mr-2"></i>
+                    <span>正在加载文件列表...</span>
+                </div>
+            `;
+        }
+        
+        /**
+         * 辅助函数：显示错误
          */
         function showError(message) {
-            fileListElement.innerHTML = '';
             errorDetailsElement.textContent = message;
             errorMessageElement.classList.remove('hidden');
-            fileCountElement.textContent = '加载失败';
+            fileListElement.innerHTML = '';
         }
         
         /**
-         * 获取文件扩展名
-         * @param {string} fileName - 文件名
-         * @returns {string} 文件扩展名
+         * 辅助函数：获取文件扩展名
          */
         function getFileExtension(fileName) {
             const parts = fileName.split('.');
@@ -193,13 +317,10 @@
         }
         
         /**
-         * 根据文件扩展名获取对应的FontAwesome图标
-         * @param {string} extension - 文件扩展名
-         * @returns {string} 图标类名
+         * 辅助函数：获取文件图标
          */
         function getFileIcon(extension) {
             const iconMap = {
-                // 文档
                 'pdf': 'fa-file-pdf-o',
                 'doc': 'fa-file-word-o',
                 'docx': 'fa-file-word-o',
@@ -209,56 +330,20 @@
                 'pptx': 'fa-file-powerpoint-o',
                 'txt': 'fa-file-text-o',
                 'md': 'fa-file-text-o',
-                
-                // 图像
                 'jpg': 'fa-file-image-o',
                 'jpeg': 'fa-file-image-o',
                 'png': 'fa-file-image-o',
                 'gif': 'fa-file-image-o',
                 'svg': 'fa-file-image-o',
-                
-                // 压缩文件
                 'zip': 'fa-file-zip-o',
                 'rar': 'fa-file-zip-o',
-                'tar': 'fa-file-zip-o',
-                'gz': 'fa-file-zip-o',
-                
-                // 代码
                 'html': 'fa-file-code-o',
                 'css': 'fa-file-code-o',
                 'js': 'fa-file-code-o',
                 'py': 'fa-file-code-o',
-                'java': 'fa-file-code-o',
-                'cpp': 'fa-file-code-o',
-                'c': 'fa-file-code-o',
+                'json': 'fa-file-code-o'
             };
-            
             return iconMap[extension] || 'fa-file-o';
-        }
-        
-        /**
-         * 格式化文件大小（字节转换为KB/MB）
-         * @param {number} bytes - 文件大小（字节）
-         * @returns {string} 格式化后的大小字符串
-         */
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return `${bytes} B`;
-            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-        }
-        
-        /**
-         * 格式化日期
-         * @param {string} dateString - ISO日期字符串
-         * @returns {string} 格式化后的日期
-         */
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('zh-CN', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
         }
     </script>
 </body>
