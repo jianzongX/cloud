@@ -85,8 +85,8 @@
     <script>
         // 获取GitHub仓库信息（需要根据实际情况修改）
         // 这些信息将用于构建文件的原始URL
-        const GITHUB_USER = 'jianzongX'; // 替换为你的GitHub用户名
-        const GITHUB_REPO = 'cloud';     // 替换为你的仓库名
+        const GITHUB_USER = 'your-username'; // 替换为你的GitHub用户名
+        const GITHUB_REPO = 'your-repo';     // 替换为你的仓库名
         const BRANCH = 'main';               // 替换为你的分支名（通常是main或master）
         
         // 文件存储的文件夹路径
@@ -155,7 +155,7 @@
             
             files.forEach(file => {
                 // 构建文件下载URL
-                const fileUrl = `https://raw.kkgithub.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}/${file.path}`;
+                const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}/${file.path}`;
                 
                 // 创建列表项
                 const li = document.createElement('li');
@@ -223,17 +223,17 @@
                 'ppt': 'fa-file-powerpoint-o',
                 'pptx': 'fa-file-powerpoint-o',
                 'txt': 'fa-file-text-o',
-                'md': 'fa-file-text-o',
+                'md': 'fa-file-text-o'，
                 
                 // 图像
-                'jpg': 'fa-file-image-o',
-                'jpeg': 'fa-file-image-o'，
+                'jpg': 'fa-file-image-o'，
+                'jpeg': 'fa-file-image-o',
                 'png': 'fa-file-image-o'，
-                'gif': 'fa-file-image-o',
-                'svg': 'fa-file-image-o'，
+                'gif': 'fa-file-image-o'，
+                'svg': 'fa-file-image-o',
                 
                 // 压缩文件
-                'zip': 'fa-file-zip-o'，
+                'zip': 'fa-file-zip-o',
                 'rar': 'fa-file-zip-o',
                 'tar': 'fa-file-zip-o',
                 'gz': 'fa-file-zip-o',
